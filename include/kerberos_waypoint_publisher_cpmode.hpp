@@ -115,14 +115,14 @@ private:
     ros::Publisher reset_flag_publisher;
     ros::Publisher force_ymg_publisher;
     ros::Publisher signal_start_flag_publisher;
-    ros::Publisher letter_start_flag_publisher;//boxfinder letter  recog add
+    ros::Publisher recog_start_flag_publisher;//boxfinder and box_deliver add
     ros::Publisher target_start_flag_publisher;
     ros::Publisher hnd_flag_publisher;
     ros::Subscriber target_pose_subscriber;
     ros::Subscriber initial_pose_subscriber;
     ros::Subscriber signal_go_flag_subscriber;
-    ros::Subscriber letter_result_subscriber;//boxfinder letter  recog add
-    ros::Subscriber luggage_result_subscriber;//boxfinder letter  recog add
+    ros::Subscriber recog_result_subscriber;//boxfinder and box_deliver recog add
+    ros::Subscriber luggage_result_subscriber;//boxfinder and box_deliver  recog add
     ros::Subscriber use_bgp_subscriber;
     ros::Subscriber hokuyo3d_status_subscriber;
     ros::Subscriber cmd_subscriber;
@@ -143,6 +143,7 @@ private:
 
     bool signal_flag;
     bool letter_flag;//box_finder add
+    bool box_flag;//box_deliver add
     int signal_count = 0;
 
     Client *action_client;
@@ -159,7 +160,9 @@ private:
     std_msgs::Bool car_flag;
     bool signal_ok = false;
     bool letter_ok = false;//box_finder add
+    bool blue_box_ok = false;//box_deliver add
     bool luggage_get_ok = false;//box_finder add
+    bool luggage_throw_ok = false;//box_deliver add
     std::string box_letter;//box_finder add
     bool block_flag = true;
     bool closure_flag = false;

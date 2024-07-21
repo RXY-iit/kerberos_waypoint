@@ -97,6 +97,7 @@ void WayPointManager::SignalGoCallback(const std_msgs::String::ConstPtr &go_flag
 
 void WayPointManager::LetterRecogCallback(const std_msgs::String::ConstPtr &letter_result)
 {
+  // letter recog communation
   if (letter_flag == true){
     if (letter_result->data == "a")
     {
@@ -116,14 +117,34 @@ void WayPointManager::LetterRecogCallback(const std_msgs::String::ConstPtr &lett
       // box_letter = "none"; //no need
     }
   }
+  // blue box communation
+  if (box_flag == true){
+    if(letter_result->data == "box found")
+    {
+      blue_box_ok = true;
+    }else if(letter_result->data == "box not found") // time up calculation in AGS code
+    {
+      blue_box_ok = false;
+    }else{
+      // box_letter = "none"; //no need
+    }
+  }
 }
 
 void WayPointManager::LuggageCallback(const std_msgs::String::ConstPtr &luggage_result)
 {
+ // GET luggage on green box
   if (letter_flag == true){
-    if (luggage_result->data == "ok") //need discuss
+    if (luggage_result->data == "get ok") //need discuss
     {
       luggage_get_ok = true;
+    }
+  }
+// Throw luggage on green box
+  if (box_flag == true){
+    if (luggage_result->data == "throw ok") //need discuss
+    {
+      luggage_throw_ok = true;
     }
   }
 }
@@ -266,7 +287,7 @@ WayPointManager::WayPointManager(ros::NodeHandle nh, ros::NodeHandle pnh)
   reset_flag_publisher = nh.advertise<std_msgs::Empty>("/move_base/YmgGPBGP/reset_flag", 1);
   force_ymg_publisher = nh.advertise<std_msgs::Int32>("/move_base/YmgGPBGP/use_ymggp_force", 1);
   signal_start_flag_publisher = nh.advertise<std_msgs::String>("/flag/detection_switch", 1);
-  letter_start_flag_publisher = nh.advertise<std_msgs::String>("/flag/letter_recog_sign", 1);
+  recog_start_flag_publisher = nh.advertise<std_msgs::String>("/flag/image_recog_sign", 1);//box_finder and box_deliver add
   // 探索対象認識も行う場合
   //  target_start_flag_publisher = nh.advertise<std_msgs::Bool>("/edr_image_proc/detection_switch", 1);
   // 経路封鎖認識のみ行なう場合
@@ -285,7 +306,7 @@ WayPointManager::WayPointManager(ros::NodeHandle nh, ros::NodeHandle pnh)
   target_pose_subscriber = nh.subscribe("target_pose", 1, &WayPointManager::TargetPoseCallback, this);
   // signal_go_flag_subscriber = nh.subscribe("signal_go_flag",10, &WayPointManager::SignalGoCallback, this);
   signal_go_flag_subscriber = nh.subscribe("/trigger", 10, &WayPointManager::SignalGoCallback, this);
-  letter_result_subscriber = nh.subscribe("/letter", 10, &WayPointManager::LetterRecogCallback, this); // box_finder mode add
+  recog_result_subscriber = nh.subscribe("/image_recog", 10, &WayPointManager::LetterRecogCallback, this); // box_finder mode add
   luggage_result_subscriber = nh.subscribe("/luggage", 10, &WayPointManager::LuggageCallback, this); // box_finder mode add
   use_bgp_subscriber = nh.subscribe("/move_base/YmgGPBGP/use_bgp_flag", 1, &WayPointManager::UseBGPCallback, this);
   initial_pose_subscriber = nh.subscribe<geometry_msgs::PoseWithCovarianceStamped>(

@@ -527,6 +527,10 @@ void WayPointManager::StateSignal()
 
 void WayPointManager::StateBoxfinder()
 {
+    // not start untill Oeperator Press the Start button
+
+    // add code here???
+
     // wait until enter is pressed
     dynamic_reconfigure::Config conf, lpconf, gpconf;
     dynamic_reconfigure::DoubleParameter double_param;
@@ -584,7 +588,6 @@ void WayPointManager::StateBoxfinder()
     //////////////////////////new code for box_finder/////////////////////////////////
     bool letter_recognization = false;
     bool greenbox_reached_flag = false;
-    int car_cnt = 0;
     bool first = false;
     ros::Time boxfinder_time = ros::Time::now();
     while (!forward_wp_flag && ros::ok())
@@ -615,14 +618,14 @@ void WayPointManager::StateBoxfinder()
             {
                 std::cout << "letter recognization start" << std::endl;
                 std_msgs::String message;
-                message.data = "文字認識中です";
+                message.data = "文字認識と荷物回収中です";
                 talk_publisher.publish(message);
                 letter_recognization = true;
                 letter_flag = true;
                 std_msgs::String lrs;
-                lrs.data = "Start"; // letter recognization start signal publish to "/flag/letter_recog_sign"
+                lrs.data = "Green Box Start"; // letter recognization start signal publish to "/flag/Image_recog_sign"
                 // collection luggage start at same time?
-                letter_start_flag_publisher.publish(lrs); 
+                recog_start_flag_publisher.publish(lrs); 
             }
         }
 
@@ -630,15 +633,15 @@ void WayPointManager::StateBoxfinder()
         {
             std_msgs::String message;
             if (box_letter == "a"){
-                message.data = "文字は a です";
+                message.data = "文字は a です。荷物回収しました";
                 // updata waypoint of a root
             }
             else if (box_letter == "b"){
-                message.data = "文字は b です";
+                message.data = "文字は b です。荷物回収しました";
                 // updata waypoint of b root
             }
             else if (box_letter == "c"){
-                message.data = "文字は c です";
+                message.data = "文字は c です。荷物回収しました";
                 // updata waypoint of c root
             }
             talk_publisher.publish(message);
@@ -650,15 +653,15 @@ void WayPointManager::StateBoxfinder()
             if (letter_ok)
             {
                 if (box_letter == "a"){
-                    message.data = "文字は a です";
+                    message.data = "文字は a です。荷物回収されなかった";
                     // updata waypoint of a root
                 }
                 else if (box_letter == "b"){
-                    message.data = "文字は b です";
+                    message.data = "文字は b です。荷物回収されなかった";
                     // updata waypoint of b root
                 }
                 else if (box_letter == "c"){
-                    message.data = "文字は c です";
+                    message.data = "文字は c です。荷物回収されなかった";
                     // updata waypoint of c root
                 }
             }else
@@ -676,7 +679,7 @@ void WayPointManager::StateBoxfinder()
     {
         std_msgs::String lrs;
         lrs.data = "Stop"; // stop letter recognization
-        letter_start_flag_publisher.publish(lrs);
+        recog_start_flag_publisher.publish(lrs);
 
         letter_ok = false;
         letter_flag = false;
@@ -700,12 +703,12 @@ void WayPointManager::StateBoxdeliver()
     if (hokuyo3d_status.data)
     { // hokuyo3d 生きてる
         double_param.name = "max_vel_x";
-        double_param.value = NORMAL_SPEED;
+        double_param.value = NORMAL_SPEED; //速度検討待ち
     }
     else
     { // hokuyo3d 死んでる
         double_param.name = "max_vel_x";
-        double_param.value = SLOW_SPEED;
+        double_param.value = SLOW_SPEED;　//速度検討待ち
     }
     lpconf.doubles.push_back(double_param);
     double_param.name = "acceleration_lim_x";
@@ -742,15 +745,16 @@ void WayPointManager::StateBoxdeliver()
     std::cout << "publishing " << current_wp_iter->id << "th waypoint " << current_wp_iter->wp_type << std::endl;
 
     std_msgs::Int32 mode;
-    mode.data = 2;
+    mode.data = 2; //確認待ち　0か2
     force_ymg_publisher.publish(mode);
 
-    /////////////////////////////////////////////////////////////////////////
-    bool waiting_for_signal = false;
-    bool goal_reached_flag = false;
-    int car_cnt = 0;
+    //////////////////////////new code for box_deliver/////////////////////////////////
+    bool box_recognization = false;
+    bool deliver_reached_flag = false;
+    int entren_cnt = 1;
     bool first = false;
-    ros::Time signal_time = ros::Time::now();
+    bool searching_finish = false;
+    ros::Time boxfinder_time = ros::Time::now();
     while (!forward_wp_flag && ros::ok())
     {
         WayPoint robot_pose = GetRobotPose();
@@ -761,86 +765,138 @@ void WayPointManager::StateBoxdeliver()
         while (diff_yaw_rad <= -M_PI)
             diff_yaw_rad += 2 * M_PI;
         ros::Duration(0.1).sleep();
-        // std::cout << "angle " << diff_yaw_rad << std::endl;
+        
         if (diff_dis_m < 0.50 && -20.0 * (M_PI / 180) < diff_yaw_rad && diff_yaw_rad < 20.0 * (M_PI / 180))
         {
-            goal_reached_flag = true;
+            deliver_reached_flag = true;// 第一エントランスへ到着と予想
         }
-        /*
-        if(action_client->getState() == actionlib::SimpleClientGoalState::ABORTED){
-            std_msgs::Empty empty_msg;
-            reset_flag_publisher.publish(empty_msg);
-            action_client->sendGoal(current_goal);
-        }
-        */
-        if (action_client->getState() == actionlib::SimpleClientGoalState::SUCCEEDED || goal_reached_flag == true)
+       
+        if (action_client->getState() == actionlib::SimpleClientGoalState::SUCCEEDED || deliver_reached_flag == true)
         {
             action_client->cancelAllGoals();
-            if (waiting_for_signal == false)
-            {
-                std::cout << "waiting for signal" << std::endl;
-                std_msgs::String message;
-                // message.data ="信号のボタンを押してください";
-                message.data = "信号待機中です";
-                talk_publisher.publish(message);
-                waiting_for_signal = true;
-                signal_flag = true;
-                std_msgs::String ktm;
-                ktm.data = "Start";
-                signal_start_flag_publisher.publish(ktm);
-            }
-        }
-
-        if (signal_ok)
-        {
-            if (!first)
-            {
-                std_msgs::String message;
-                message.data = "青信号です";
-                talk_publisher.publish(message);
+             if (!first)
+             {
+                boxfinder_time = ros::Time::now();//time count start when arrived thed entrance
                 first = true;
-                signal_time = ros::Time::now();
-            }
-            if(car_flag.data) forward_wp_flag = true;
-
-            // timeout
-            // if ( (ros::Time::now() - signal_time) > ros::Duration(20.0)) {
-            if ((ros::Time::now() - signal_time) > ros::Duration(15.0))
+             }
+            if (box_recognization == false)
             {
-                signal_time = ros::Time::now();
-                signal_ok = false;
-                first = false;
-                waiting_for_signal = false;
+                entren_cnt++; //time of searching
+                std::cout << "letter recognization start" << std::endl;
                 std_msgs::String message;
-                message.data = "横断できませんでした";
+                message.data = "青いボックス探し中です";
                 talk_publisher.publish(message);
+                box_recognization = true;
+                box_flag = true;
+                std_msgs::String lrs;
+                lrs.data = "Bule Box Start"; // Blue Box recognization start signal publish to "/flag/letter_recog_sign"
+                // collection luggage start at same time?
+                recog_start_flag_publisher.publish(lrs); 
             }
         }
-        // std::cout << action_client->getState().toString() << " " << std::endl;
+
+        // if (letter_ok && luggage_get_ok)
+        std_msgs::String message;
+        if(!searching_finish){
+            // searching sate
+            if (blue_box_ok)
+            {
+                message.data = "青いBOX見つかりました";
+                talk_publisher.publish(message);
+                searching_finish = true;
+                // Approaching blue box
+                // need disscuss , use waypoint or other program?？？？
+            }else{
+                if(entren_cnt<=3){
+                    // Go to next extrance (all 3 entrance)
+                    message.data = "青いBOX見つかりません、次のエントランスへ進みます";
+                    talk_publisher.publish(message);
+                    // updata waypoint of next entrance. current_goal???
+                    // add conter
+                    // prepare for next recognization
+                    box_recognization = false;
+                    box_flag = false;
+                    first = false;
+                    std_msgs::String lrs;
+                    lrs.data = "Bule Box waiting"; // Blue Box recognization start signal publish to "/flag/letter_recog_sign"
+                    // collection luggage start at same time?
+                    recog_start_flag_publisher.publish(lrs); 
+                }else{
+                    // could not found blue box, go to exist
+                    if (box_letter == "a"){
+                        message.data = "aエリアの出口へ";
+                        // updata waypoint
+                    }
+                    else if (box_letter == "b"){
+                        message.data = "bエリアの出口へ";
+                        // updata waypoint
+                    }
+                    else if (box_letter == "c"){
+                        message.data = "cエリアの出口へ";
+                        // updata waypoint
+                    }
+                    forward_wp_flag = true;// go to EXIT 
+                }
+            }
+
+        }else{
+            // delivering state
+            if (luggage_throw_ok){
+                message.data = "荷物配達しました";
+                if (box_letter == "a"){
+                    message.data = "aエリアの出口へ";
+                    // updata waypoint
+                }
+                else if (box_letter == "b"){
+                    message.data = "bエリアの出口へ";
+                    // updata waypoint
+                }
+                else if (box_letter == "c"){
+                    message.data = "cエリアの出口へ";
+                    // updata waypoint
+                }
+                forward_wp_flag = true;// go to EXIT 
+            }
+        }
+
+        // time out check. each searching, approaching step will reset the count time
+        if ((ros::Time::now() - boxfinder_time) > ros::Duration(90.0))
+        {
+            std_msgs::String message;
+            if (luggage_throw_ok){
+                message.data = "荷物配達しました";
+                if (box_letter == "a"){
+                    message.data = "aエリアの出口へ";
+                    // updata waypoint
+                }
+                else if (box_letter == "b"){
+                    message.data = "bエリアの出口へ";
+                    // updata waypoint
+                }
+                else if (box_letter == "c"){
+                    message.data = "cエリアの出口へ";
+                    // updata waypoint
+                }
+                forward_wp_flag = true;// go to EXIT 
+                talk_publisher.publish(message);
+             }
+        }
         ros::Duration(0.1).sleep();
     }
-    /*
-    if (forward_wp_flag) {
-        ++current_wp_iter;
-        forward_wp_flag = false;
-        std_msgs::String message;
-        message.data ="横断開始します";
-        talk_publisher.publish(message);
-    }
-    */
+
     if (forward_wp_flag)
     {
-        std_msgs::String ktm;
-        ktm.data = "Stop";
-        signal_start_flag_publisher.publish(ktm);
+        std_msgs::String lrs;
+        lrs.data = "Stop"; // stop letter recognization
+        recog_start_flag_publisher.publish(lrs);
 
-        signal_ok = false;
-        signal_flag = false;
+        letter_ok = false;
+        letter_flag = false;
 
-        ++current_wp_iter;
+        ++current_wp_iter;// need disscuss
         forward_wp_flag = false;
         std_msgs::String message;
-        message.data = "横断開始します";
+        message.data = "EXITへ進みます";
         talk_publisher.publish(message);
     }
 }
