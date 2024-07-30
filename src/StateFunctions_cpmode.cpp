@@ -540,12 +540,12 @@ void WayPointManager::StateBoxfinder()
     if (hokuyo3d_status.data)
     { // hokuyo3d 生きてる
         double_param.name = "max_vel_x";
-        double_param.value = NORMAL_SPEED; //速度検討待ち
+        double_param.value = NORMAL_SPEED;//速度検討待ち
     }
     else
     { // hokuyo3d 死んでる
         double_param.name = "max_vel_x";
-        double_param.value = SLOW_SPEED;　//速度検討待ち
+        double_param.value = SLOW_SPEED;//速度検討待ち
     }
     lpconf.doubles.push_back(double_param);
     double_param.name = "acceleration_lim_x";
@@ -635,6 +635,23 @@ void WayPointManager::StateBoxfinder()
             if (box_letter == "a"){
                 message.data = "文字は a です。荷物回収しました";
                 // updata waypoint of a root
+                // Method 1 :Golbal Waypoint 
+                // Method 2: new waypoint file insert
+                std::ifstream edge_file("a.txt");
+                if (!edge_file) {
+                std::cerr << "ERROR: Can't open edge file !!" << std::endl;
+                return;
+                }
+                
+                std::string reading_line;
+                while (1) {
+                    std::getline(edge_file, reading_line);
+                    if (reading_line.empty()) {
+                    break;
+                    }
+                    std::cout << reading_line << std::endl;
+                }
+
             }
             else if (box_letter == "b"){
                 message.data = "文字は b です。荷物回収しました";
@@ -703,12 +720,12 @@ void WayPointManager::StateBoxdeliver()
     if (hokuyo3d_status.data)
     { // hokuyo3d 生きてる
         double_param.name = "max_vel_x";
-        double_param.value = NORMAL_SPEED; //速度検討待ち
+        double_param.value = NORMAL_SPEED;//速度検討待ち
     }
     else
     { // hokuyo3d 死んでる
         double_param.name = "max_vel_x";
-        double_param.value = SLOW_SPEED;　//速度検討待ち
+        double_param.value = SLOW_SPEED;//速度検討待ち
     }
     lpconf.doubles.push_back(double_param);
     double_param.name = "acceleration_lim_x";
@@ -719,7 +736,7 @@ void WayPointManager::StateBoxdeliver()
 
     gpconf.doubles.clear();
     double_param.name = "stuck_timeout";
-    double_param.value = 3000;
+    double_param.value = 3000; // 3S間止まったら、ダイクストラによる回避を行う
     gpconf.doubles.push_back(double_param);
     srv.request.config = gpconf;
     globalplanner_client.call(srv);
@@ -774,15 +791,17 @@ void WayPointManager::StateBoxdeliver()
         if (action_client->getState() == actionlib::SimpleClientGoalState::SUCCEEDED || deliver_reached_flag == true)
         {
             action_client->cancelAllGoals();
+            // time count
              if (!first)
              {
                 boxfinder_time = ros::Time::now();//time count start when arrived thed entrance
                 first = true;
              }
+             //searching 
             if (box_recognization == false)
             {
                 entren_cnt++; //time of searching
-                std::cout << "letter recognization start" << std::endl;
+                std::cout << "bule box recognization start" << std::endl;
                 std_msgs::String message;
                 message.data = "青いボックス探し中です";
                 talk_publisher.publish(message);
@@ -790,7 +809,18 @@ void WayPointManager::StateBoxdeliver()
                 box_flag = true;
                 std_msgs::String lrs;
                 lrs.data = "Bule Box Start"; // Blue Box recognization start signal publish to "/flag/letter_recog_sign"
-                // collection luggage start at same time?
+                recog_start_flag_publisher.publish(lrs); 
+            }
+            //confirm blue box
+            if(searching_finish){
+                std::cout << "bule box confirm start" << std::endl;
+                std_msgs::String message;
+                message.data = "青いボックス確認中です";
+                talk_publisher.publish(message);
+                box_recognization = true;
+                box_flag = true;
+                std_msgs::String lrs;
+                lrs.data = "Bule Box confirm Start"; // Blue Box recognization start signal publish to "/flag/letter_recog_sign"
                 recog_start_flag_publisher.publish(lrs); 
             }
         }
@@ -804,8 +834,7 @@ void WayPointManager::StateBoxdeliver()
                 message.data = "青いBOX見つかりました";
                 talk_publisher.publish(message);
                 searching_finish = true;
-                // Approaching blue box
-                // need disscuss , use waypoint or other program?？？？
+                // Approaching blue box, code in callback of 
             }else{
                 if(entren_cnt<=3){
                     // Go to next extrance (all 3 entrance)
@@ -818,8 +847,7 @@ void WayPointManager::StateBoxdeliver()
                     box_flag = false;
                     first = false;
                     std_msgs::String lrs;
-                    lrs.data = "Bule Box waiting"; // Blue Box recognization start signal publish to "/flag/letter_recog_sign"
-                    // collection luggage start at same time?
+                    lrs.data = "Bule Box waiting"; // Blue Box recognization waiting signal publish to "/flag/letter_recog_sign"
                     recog_start_flag_publisher.publish(lrs); 
                 }else{
                     // could not found blue box, go to exist
@@ -840,6 +868,11 @@ void WayPointManager::StateBoxdeliver()
             }
 
         }else{
+            if (blue_box_conf){
+                std_msgs::String lrs;
+                lrs.data = "Deliver Start"; // Luggage deliver start signal publish to "/flag/letter_recog_sign"
+                recog_start_flag_publisher.publish(lrs);
+            }
             // delivering state
             if (luggage_throw_ok){
                 message.data = "荷物配達しました";

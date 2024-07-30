@@ -55,6 +55,9 @@ public:
     void ReadWayPointFile(wp_generation::wp_array msg);
     void ConvertToWayPointMsg();
     void TargetPoseCallback(const geometry_msgs::PoseStamped::Ptr &msg);
+    void BlueBoxCallback(const geometry_msgs::PoseStamped::Ptr &msg);//new add 2024
+    void LetterRecogCallback(const std_msgs::String::ConstPtr &letter_result);//new add 2024
+    void LuggageCallback(const std_msgs::String::ConstPtr &luggage_result);//new add 2024
     void ForwardWaypointByKeyboardInterrupt();
     std::string GetState();
     WayPoint GetRobotPose();
@@ -105,6 +108,8 @@ private:
     void StateCrosswalk();
     void StateTurningPoint();
     void StateSignal();
+    void StateBoxfinder();// new add 2024
+    void StateBoxdeliver();// new add 2024
     void StateEnd();
     void AmclUpdate(int update_time);
     ros::Publisher grass_road_publisher;
@@ -119,6 +124,7 @@ private:
     ros::Publisher target_start_flag_publisher;
     ros::Publisher hnd_flag_publisher;
     ros::Subscriber target_pose_subscriber;
+    ros::Subscriber blue_box_subscriber; //box_deliver add
     ros::Subscriber initial_pose_subscriber;
     ros::Subscriber signal_go_flag_subscriber;
     ros::Subscriber recog_result_subscriber;//boxfinder and box_deliver recog add
@@ -161,6 +167,7 @@ private:
     bool signal_ok = false;
     bool letter_ok = false;//box_finder add
     bool blue_box_ok = false;//box_deliver add
+    bool blue_box_conf = false;//box_deliver add
     bool luggage_get_ok = false;//box_finder add
     bool luggage_throw_ok = false;//box_deliver add
     std::string box_letter;//box_finder add

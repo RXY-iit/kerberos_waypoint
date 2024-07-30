@@ -125,6 +125,12 @@ void WayPointManager::LetterRecogCallback(const std_msgs::String::ConstPtr &lett
     }else if(letter_result->data == "box not found") // time up calculation in AGS code
     {
       blue_box_ok = false;
+    }else if(letter_result->data == "box confirmed") // time up calculation in AGS code
+    {
+      blue_box_conf = true;
+    }else if(letter_result->data == "box not confirmed") // time up calculation in AGS code
+    {
+      blue_box_conf = false;
     }else{
       // box_letter = "none"; //no need
     }
@@ -301,9 +307,10 @@ WayPointManager::WayPointManager(ros::NodeHandle nh, ros::NodeHandle pnh)
 
   block_subscriber = nh.subscribe("/is_road_closure", 1, &WayPointManager::BlockCallback, this);
   hokuyo3d_status_subscriber = nh.subscribe("hokuyo3d_status", 1, &WayPointManager::Hokuyo3dStatusCallback, this);
-  wp_array_subscriber = nh.subscribe("/all_wp_array", 1, &WayPointManager::WpArrayCallback, this);
+  wp_array_subscriber = nh.subscribe("/all_wp_array", 1, &WayPointManager::WpArrayCallback, this); //
 
   target_pose_subscriber = nh.subscribe("target_pose", 1, &WayPointManager::TargetPoseCallback, this);
+  blue_box_subscriber = nh.subscribe("/blue_box_target_pose", 1, &WayPointManager::BlueBoxCallback, this);// add for box_deliver
   // signal_go_flag_subscriber = nh.subscribe("signal_go_flag",10, &WayPointManager::SignalGoCallback, this);
   signal_go_flag_subscriber = nh.subscribe("/trigger", 10, &WayPointManager::SignalGoCallback, this);
   recog_result_subscriber = nh.subscribe("/image_recog", 10, &WayPointManager::LetterRecogCallback, this); // box_finder mode add
@@ -473,7 +480,29 @@ void WayPointManager::CallBackInitialPose(const geometry_msgs::PoseWithCovarianc
   // tf::quaternionTFToMsg(tmp_q, initial_pose3D_msg.pose.pose.orientation);
   // initial_pose3D_publisher.publish(initial_pose3D_msg);
 }
+void WayPointManager::BlueBoxCallback(const geometry_msgs::PoseStamped::Ptr &msg)
+{
+  if (blue_box_ok)
+  {
+    //rewrite current wp_inter
+    current_wp_iter->x = msg->pose.position.x;
+    current_wp_iter->y = msg->pose.position.y;
+    current_wp_iter->yaw = tf::getYaw(msg->pose.orientation);
 
+    // Change current goal to blue box location
+    move_base_msgs::MoveBaseGoal current_goal;
+    current_goal.target_pose.header.stamp = ros::Time::now();
+    current_goal.target_pose.header.frame_id = "map";
+    current_goal.target_pose.pose.position.x = current_wp_iter->x;
+    current_goal.target_pose.pose.position.y = current_wp_iter->y;
+    current_goal.target_pose.pose.position.z = 0.0;
+    current_goal.target_pose.pose.orientation = tf::createQuaternionMsgFromYaw(current_wp_iter->yaw);
+    action_client->sendGoal(current_goal);
+
+    //前進できない場合の後退プログラム
+
+  }
+}
 void WayPointManager::TargetPoseCallback(const geometry_msgs::PoseStamped::Ptr &msg)
 {
   bool target_add_flag = true;
