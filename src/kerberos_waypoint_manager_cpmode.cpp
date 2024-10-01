@@ -292,6 +292,7 @@ WayPointManager::WayPointManager(ros::NodeHandle nh, ros::NodeHandle pnh)
   // force_ymg_publisher = nh.advertise<std_msgs::Int32>("/move_base/YmgGPHybROS/use_ymggp_force", 1);
   reset_flag_publisher = nh.advertise<std_msgs::Empty>("/move_base/YmgGPBGP/reset_flag", 1);
   force_ymg_publisher = nh.advertise<std_msgs::Int32>("/move_base/YmgGPBGP/use_ymggp_force", 1);
+  select_route_publisher = nh.advertise<std_msgs::Int32>("/select_route", 1);// add for 2024 task D
   signal_start_flag_publisher = nh.advertise<std_msgs::String>("/flag/detection_switch", 1);
   recog_start_flag_publisher = nh.advertise<std_msgs::String>("/flag/image_recog_sign", 1);//box_finder and box_deliver add
   // 探索対象認識も行う場合
@@ -500,6 +501,25 @@ void WayPointManager::BlueBoxCallback(const geometry_msgs::PoseStamped::Ptr &msg
     action_client->sendGoal(current_goal);
 
     //前進できない場合の後退プログラム
+    //lp_config
+
+    // lpconf.bools.clear();
+    // bool_param.name = "line_mode";
+    // bool_param.value = true;
+    // lpconf.bools.push_back(bool_param);
+    
+    
+    // 動きが変　修正必要
+    // lpconf.bools.clear();
+    // bool_param.name = "back_mode";
+    // bool_param.value = true;
+    // lpconf.bools.push_back(bool_param);
+    // lpconf.doubles.clear();
+    // double_param.name = "max_vel_theta";
+    // double_param.value = 1.0;
+    // lpconf.doubles.push_back(double_param);
+    // srv.request.config = lpconf;
+    // localplanner_client.call(srv);
 
   }
 }

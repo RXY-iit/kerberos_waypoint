@@ -119,6 +119,7 @@ private:
     ros::Publisher talk_publisher;
     ros::Publisher reset_flag_publisher;
     ros::Publisher force_ymg_publisher;
+    ros::Publisher select_route_publisher;// add for 2024 task D
     ros::Publisher signal_start_flag_publisher;
     ros::Publisher recog_start_flag_publisher;//boxfinder and box_deliver add
     ros::Publisher target_start_flag_publisher;

@@ -535,6 +535,7 @@ void WayPointManager::StateBoxfinder()
     dynamic_reconfigure::Config conf, lpconf, gpconf;
     dynamic_reconfigure::DoubleParameter double_param;
     dynamic_reconfigure::Reconfigure srv;
+    enum Route_Select { A_AERA = 51, B_AERA = 61, C_AERA = 71, EXIT = 80};
 
     lpconf.doubles.clear();
     if (hokuyo3d_status.data)
@@ -582,7 +583,7 @@ void WayPointManager::StateBoxfinder()
     std::cout << "publishing " << current_wp_iter->id << "th waypoint " << current_wp_iter->wp_type << std::endl;
 
     std_msgs::Int32 mode;
-    mode.data = 2; //確認待ち　0か2
+    mode.data = 2; //2は強制的に直線のプランナー　０は曲がり線のプランナー許す
     force_ymg_publisher.publish(mode);
 
     //////////////////////////new code for box_finder/////////////////////////////////
@@ -628,38 +629,29 @@ void WayPointManager::StateBoxfinder()
                 recog_start_flag_publisher.publish(lrs); 
             }
         }
-
-        if (letter_ok && luggage_get_ok)
+        std_msgs::Int32 route_letter;
+        // if (letter_ok && luggage_get_ok)
+        if (letter_ok)
         {
             std_msgs::String message;
             if (box_letter == "a"){
                 message.data = "文字は a です。荷物回収しました";
                 // updata waypoint of a root
-                // Method 1 :Golbal Waypoint 
-                // Method 2: new waypoint file insert
-                std::ifstream edge_file("a.txt");
-                if (!edge_file) {
-                std::cerr << "ERROR: Can't open edge file !!" << std::endl;
-                return;
-                }
-                
-                std::string reading_line;
-                while (1) {
-                    std::getline(edge_file, reading_line);
-                    if (reading_line.empty()) {
-                    break;
-                    }
-                    std::cout << reading_line << std::endl;
-                }
+                route_letter.data = A_AERA; // A route
+                select_route_publisher.publish(route_letter);
 
             }
             else if (box_letter == "b"){
                 message.data = "文字は b です。荷物回収しました";
                 // updata waypoint of b root
+                route_letter.data = B_AERA; // A route
+                select_route_publisher.publish(route_letter);
             }
             else if (box_letter == "c"){
                 message.data = "文字は c です。荷物回収しました";
                 // updata waypoint of c root
+                route_letter.data = C_AERA; // A route
+                select_route_publisher.publish(route_letter);
             }
             talk_publisher.publish(message);
             forward_wp_flag = true;
@@ -672,19 +664,27 @@ void WayPointManager::StateBoxfinder()
                 if (box_letter == "a"){
                     message.data = "文字は a です。荷物回収されなかった";
                     // updata waypoint of a root
+                    route_letter.data = A_AERA; // A route
+                    select_route_publisher.publish(route_letter);
                 }
                 else if (box_letter == "b"){
                     message.data = "文字は b です。荷物回収されなかった";
                     // updata waypoint of b root
+                    route_letter.data = B_AERA; // A route
+                    select_route_publisher.publish(route_letter);
                 }
                 else if (box_letter == "c"){
                     message.data = "文字は c です。荷物回収されなかった";
                     // updata waypoint of c root
+                    route_letter.data = C_AERA; // A route
+                    select_route_publisher.publish(route_letter);
                 }
             }else
             {
                 message.data = "文字認識出来ませんでした";
                 // updata waypoint to exit 
+                route_letter.data = EXIT; // A route
+                select_route_publisher.publish(route_letter);
             }
             talk_publisher.publish(message);
             forward_wp_flag = true;
